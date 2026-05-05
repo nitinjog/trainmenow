@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { BookOpen, ChevronRight, Clock, ExternalLink, FileText, Loader2, PenLine } from 'lucide-react';
+import { BookOpen, ChevronRight, Clock, ExternalLink, Loader2, PenLine } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
-import { curriculumApi, scrapeApi } from '@/services/api';
+import { curriculumApi } from '@/services/api';
 import { useLearningStore } from '@/stores/learningStore';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -18,30 +18,15 @@ export default function LearnPage() {
   const navigate = useNavigate();
   const { notes, updateNote, updateProgress, progress } = useLearningStore();
   const [activeSubmodule, setActiveSubmodule] = useState<SubModule | null>(null);
-  const [jobId, setJobId] = useState<string | null>(null);
-  const [jobStatus, setJobStatus] = useState<string>('');
   const [note, setNote] = useState('');
 
-  // Poll for job completion if the journey is still being prepared
-  useEffect(() => {
-    if (!jobId) return;
-    const interval = setInterval(async () => {
-      const { data } = await scrapeApi.getStatus(jobId);
-      setJobStatus(data.status);
-      if (data.status === 'completed' || data.status === 'failed') {
-        clearInterval(interval);
-        if (data.status === 'completed') {
-          refetch();
-        }
-      }
-    }, 4000);
-    return () => clearInterval(interval);
-  }, [jobId]);
-
-  const { data: modules, isLoading, refetch } = useQuery({
+  const { data: modules, isLoading } = useQuery({
     queryKey: ['modules', moduleId],
     queryFn: () => curriculumApi.getModules(moduleId!).then(r => r.data as TrainingModule[]),
-    refetchInterval: (data) => (!data || data.length === 0) ? 5000 : false,
+    refetchInterval: (query) => {
+      const d = query.state.data as TrainingModule[] | undefined;
+      return !d || d.length === 0 ? 5000 : false;
+    },
   });
 
   const module = modules?.[0];
@@ -90,7 +75,7 @@ export default function LearnPage() {
             AI is researching and organizing content. This usually takes 1–3 minutes.
           </p>
           <div className="text-xs text-muted-foreground">
-            {jobStatus && `Status: ${jobStatus}`}
+            Checking for updates every 5 seconds…
           </div>
         </div>
       </div>

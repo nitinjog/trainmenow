@@ -1,3 +1,4 @@
+import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -8,7 +9,6 @@ import {
   View,
   StyleSheet,
   PDFDownloadLink,
-  Font,
 } from '@react-pdf/renderer';
 import { Download, Share2, ArrowLeft, Award } from 'lucide-react';
 import { certificateApi } from '@/services/api';
@@ -279,17 +279,27 @@ export default function CertificatePage() {
           {/* Actions */}
           <Card>
             <CardContent className="pt-6 flex flex-wrap gap-3 justify-center">
-              <PDFDownloadLink
-                document={<CertificatePDF cert={cert} />}
-                fileName={`certificate-${cert.certificateNumber}.pdf`}
-              >
-                {({ loading }) => (
-                  <Button disabled={loading}>
-                    <Download className="h-4 w-4 mr-2" />
-                    {loading ? 'Preparing PDF...' : 'Download PDF'}
-                  </Button>
-                )}
-              </PDFDownloadLink>
+              {(() => {
+                // PDFDownloadLink's TS types don't expose the render-prop overload cleanly
+                const PDFLink = PDFDownloadLink as unknown as React.FC<{
+                  document: React.ReactElement;
+                  fileName: string;
+                  children: (props: { loading: boolean }) => React.ReactElement;
+                }>;
+                return (
+                  <PDFLink
+                    document={<CertificatePDF cert={cert} />}
+                    fileName={`certificate-${cert.certificateNumber}.pdf`}
+                  >
+                    {({ loading }) => (
+                      <Button disabled={loading}>
+                        <Download className="h-4 w-4 mr-2" />
+                        {loading ? 'Preparing PDF...' : 'Download PDF'}
+                      </Button>
+                    )}
+                  </PDFLink>
+                );
+              })()}
 
               <Button variant="outline" onClick={handleShare}>
                 <Share2 className="h-4 w-4 mr-2" />
