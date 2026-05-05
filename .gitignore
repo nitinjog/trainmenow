@@ -30,3 +30,6 @@ Thumbs.db
 
 # Playwright browsers
 backend/node_modules/.cache/ms-playwright
+
+# Local Netlify folder
+.netlify
