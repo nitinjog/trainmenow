@@ -11,7 +11,7 @@ class GeminiService {
   constructor() {
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
     this.model = genAI.getGenerativeModel({
-      model: process.env.GEMINI_MODEL || 'gemini-2.5-flash-preview-04-17',
+      model: process.env.GEMINI_MODEL || 'gemini-2.0-flash',
       systemInstruction: SYSTEM_PROMPT,
     });
   }
