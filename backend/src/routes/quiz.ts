@@ -16,7 +16,7 @@ const SubmitSchema = z.object({
   moduleId: z.string().uuid(),
   questions: z.array(z.object({
     id: z.string(),
-    type: z.string(),
+    type: z.enum(['multiple_choice', 'true_false', 'short_answer']),
     question: z.string(),
     options: z.array(z.string()).optional(),
     correctAnswer: z.string(),
