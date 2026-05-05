@@ -4,82 +4,72 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Train Me Now is an AI-first self-learning platform. Users input a topic + duration, Gemini Flash 2.5 designs a personalized curriculum, Playwright scrapes web content, and LLM organizes it into modules with quizzes and client-side PDF certificate generation.
+Train Me Now is an AI-first self-learning platform. Users input a topic + duration, Gemini Flash designs a personalized curriculum, Playwright scrapes web content, and the LLM organizes it into modules with quizzes and client-side PDF certificate generation.
 
-## Deployment Targets
+## Deployment Status (as of 2026-05-05) — ALL LIVE
 
 | Layer | Service | Status |
 |---|---|---|
-| Frontend | Netlify — `trainmenow-app-616.netlify.app` | Site created, **deploy pending** |
-| Backend API | Render — free web service | **Not yet deployed** |
-| PostgreSQL | Neon (free serverless) | **Not yet provisioned** |
-| Redis + BullMQ | Upstash (free tier) | **Not yet provisioned** |
+| Frontend | Netlify — `trainmenow-app-616.netlify.app` | **LIVE** |
+| Backend API | Render — `trainmenow-api.onrender.com` | **LIVE** |
+| PostgreSQL | Neon (free serverless) | **LIVE** — tables created via `prisma db push` |
+| Redis + BullMQ | Upstash (free tier) | **LIVE** |
 
-### GitHub
-- Repo: `https://github.com/nitinjog/trainmenow` (account: nitinjog, branch: master)
-- Two commits pushed: initial scaffold + TypeScript fix
+### Service Registry
 
-### Netlify
-- Site name: `trainmenow-app-616`, ID: `d8608965-4beb-48c7-bde9-3396f0376b2e`
-- URL: `https://trainmenow-app-616.netlify.app`
-- **Frontend dist is built** (`frontend/dist/` exists locally). Next step: run deploy command.
-- After Render URL is known, set env var `VITE_API_URL` on Netlify and redeploy.
+| Service | Details |
+|---|---|
+| Frontend URL | `https://trainmenow-app-616.netlify.app` |
+| Backend URL | `https://trainmenow-api.onrender.com` |
+| Netlify site ID | `d8608965-4beb-48c7-bde9-3396f0376b2e` |
+| Render service ID | `srv-d7t0j90sfn5c73ftb4p0` |
+| GitHub | `https://github.com/nitinjog/trainmenow` (account: nitinjog, branch: master) |
+| Neon DB | `ep-royal-lake-ap8nnvre.c-7.us-east-1.aws.neon.tech`, DB: `neondb` |
+| Upstash Redis | `neat-mallard-115620.upstash.io:6379` (use `rediss://` TLS prefix) |
 
-### To resume deployment (next session):
+### Next Session Resume Checklist
 
-**Step 1 — Deploy frontend to Netlify:**
-```bash
-cd frontend && npm run build   # already built, but re-run to be safe
-NETLIFY_AUTH_TOKEN=<token> npx netlify deploy --prod --dir=dist --site=d8608965-4beb-48c7-bde9-3396f0376b2e
+**Outstanding item — must do first:**
+Update Render env vars via dashboard (`https://dashboard.render.com/web/srv-d7t0j90sfn5c73ftb4p0`):
 ```
+GEMINI_API_KEY = AIzaSyBsPQWIzTAibA8G1qYuYxr8-trHZhI2xiU   ← new key (old one was quota-exhausted)
+GEMINI_MODEL   = gemini-flash-latest                         ← only model with quota on this key
+```
+Code already updated (commit `62e575d` on master uses `gemini-flash-latest` as default fallback).
+After env vars are saved on Render, it will auto-redeploy. Then verify quiz generation works.
 
-**Step 2 — Provision Neon PostgreSQL (free):**
-- Sign up at neon.tech → create project `trainmenow` → copy connection string
-- Set as `DATABASE_URL` on Render
-
-**Step 3 — Provision Upstash Redis (free):**
-- Sign up at upstash.com → create Redis DB → copy `REDIS_URL`
-- Set as `REDIS_URL` on Render
-
-**Step 4 — Deploy backend to Render:**
+**Or via Render API (service ID confirmed above):**
 ```bash
-# Using Render API (key stored in memory):
-curl -X POST https://api.render.com/v1/services \
+curl -X PUT https://api.render.com/v1/services/srv-d7t0j90sfn5c73ftb4p0/env-vars \
   -H "Authorization: Bearer <render_api_key>" \
   -H "Content-Type: application/json" \
-  -d '{
-    "type": "web_service",
-    "name": "trainmenow-api",
-    "repo": "https://github.com/nitinjog/trainmenow",
-    "branch": "master",
-    "rootDir": "backend",
-    "buildCommand": "npm install && npx playwright install chromium --with-deps && npm run build && npx prisma generate",
-    "startCommand": "npm start",
-    "plan": "free",
-    "envVars": [...]
-  }'
+  -d '[{"key":"GEMINI_API_KEY","value":"AIzaSyBsPQWIzTAibA8G1qYuYxr8-trHZhI2xiU"},{"key":"GEMINI_MODEL","value":"gemini-flash-latest"}]'
 ```
 
-**Step 5 — Set env vars on Render:**
-```
-DATABASE_URL=<neon connection string>
-REDIS_URL=<upstash redis url>
-GEMINI_API_KEY=<provided by user>
-GEMINI_MODEL=gemini-2.5-flash-preview-04-17
-JWT_SECRET=<generate random>
-FRONTEND_URL=https://trainmenow-app-616.netlify.app
-NODE_ENV=production
-```
+**After quiz is confirmed working:**
+- Revert `errorHandler.ts` to hide raw error messages: change `res.status(500).json({ error: err.message })` back to `res.status(500).json({ error: 'Internal server error' })` for production.
 
-**Step 6 — Run Prisma migrations on Render:**
-After first deploy, open Render shell and run: `npx prisma migrate deploy`
+### Bug Fixes Applied During Deployment Session
 
-**Step 7 — Update VITE_API_URL on Netlify:**
-Once Render gives a URL (e.g. `trainmenow-api.onrender.com`), set:
+These are already in `master` — do NOT re-apply:
+
+1. **`backend/package.json`** — `@types/express` downgraded `^5.0.0` → `^4.17.21` (v5 broke `req.params` types)
+2. **`backend/tsconfig.json`** — added `"types": ["node"]` and `"DOM"` to lib (needed after express v4 type change)
+3. **`backend/src/routes/quiz.ts`** — Zod schema `type: z.string()` → `z.enum([...])` to match `QuestionData`
+4. **`backend/src/middleware/errorHandler.ts`** — added `ZodError` → 400; exposed `err.message` for debugging (revert for prod)
+5. **`backend/src/app.ts`** — rate limit raised `max: 10` → `max: 200` (10/min exhausted by polling every 5s)
+6. **`backend/src/services/geminiService.ts`** — retry logic (3x, 3/6/9s backoff); `maxOutputTokens` floor 2048; default model `gemini-flash-latest`
+7. **`frontend/netlify.toml`** — `VITE_API_URL` was `""` (overrode everything); fixed to actual Render URL
+8. **`frontend/.env.production`** — created with `VITE_API_URL=https://trainmenow-api.onrender.com/api/v1`
+9. **`frontend/src/pages/QuizPage.tsx`** — `useState(() => loadQuiz())` anti-pattern → `useEffect(() => { loadQuiz(); }, [])`
+
+### Prisma Note
+
+**Use `prisma db push` not `prisma migrate deploy`** — no migration files were ever committed. The Render build command should use `prisma db push`:
 ```
-VITE_API_URL=https://trainmenow-api.onrender.com/api/v1
+npm install --include=dev && PLAYWRIGHT_BROWSERS_PATH=0 npx playwright install chromium && npm run build && npx prisma generate && npx prisma db push
 ```
-Then trigger a redeploy on Netlify.
+`PLAYWRIGHT_BROWSERS_PATH=0` installs Playwright into `node_modules/` so it persists from build container to runtime container on Render.
 
 ## Commands
 
@@ -167,14 +157,14 @@ GET  /health
 DATABASE_URL=postgresql://postgres:postgres@localhost:5432/trainmenow
 REDIS_URL=redis://localhost:6379
 GEMINI_API_KEY=                    # provided by user
-GEMINI_MODEL=gemini-2.5-flash-preview-04-17
+GEMINI_MODEL=gemini-flash-latest   # only model with quota on current key
 SERPAPI_KEY=                       # optional, scraping degrades without it
 PORT=3000
 NODE_ENV=development
 JWT_SECRET=change-me
 FRONTEND_URL=http://localhost:5173
 
-# frontend: VITE_API_URL set on Netlify dashboard (not in repo)
+# frontend: VITE_API_URL set in frontend/netlify.toml and frontend/.env.production
 # In dev, Vite proxy handles /api → localhost:3000
 ```
 
@@ -183,5 +173,8 @@ FRONTEND_URL=http://localhost:5173
 - Quiz pass threshold: 70%
 - Scraping: max 3 parallel, 1s delay between batches, max 15 URLs, 10k chars/page
 - Playwright on Render: `--no-sandbox --disable-dev-shm-usage --disable-gpu`
+- `PLAYWRIGHT_BROWSERS_PATH=0` required on Render (installs into `node_modules/` which persists to runtime)
 - Render free: 512MB RAM, spins down after 15min idle (cold start ~30–60s)
 - Certificate number format: `TMN-${8-char UUID}-${timestamp}`
+- Gemini free tier: `gemini-2.5-flash` = 20 req/day; `gemini-flash-latest` has higher quota — use this
+- `prisma db push` not `prisma migrate deploy` (no migration files committed)
