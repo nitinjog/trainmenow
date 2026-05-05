@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle, XCircle, Timer, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -36,8 +36,7 @@ export default function QuizPage() {
     }
   }
 
-  // Auto-load on mount
-  useState(() => { loadQuiz(); });
+  useEffect(() => { loadQuiz(); }, []);
 
   async function handleSubmit() {
     if (!quiz) return;

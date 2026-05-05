@@ -20,7 +20,7 @@ app.use(express.json({ limit: '10mb' }));
 
 const limiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 10,
+  max: 200,
   standardHeaders: true,
   legacyHeaders: false,
 });
