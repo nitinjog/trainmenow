@@ -1,0 +1,32 @@
+# Environment files - never commit
+.env
+.env.local
+.env.*.local
+backend/.env
+
+# Dependencies
+node_modules/
+*/node_modules/
+
+# Build outputs
+dist/
+build/
+backend/dist/
+
+# Prisma
+backend/prisma/migrations/dev.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Playwright browsers
+backend/node_modules/.cache/ms-playwright

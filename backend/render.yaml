@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: trainmenow-api
+    env: node
+    plan: free
+    buildCommand: npm install && npx playwright install chromium --with-deps && npm run build && npx prisma generate
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-2.5-flash-preview-04-17
+      - key: SERPAPI_KEY
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: FRONTEND_URL
+        sync: false

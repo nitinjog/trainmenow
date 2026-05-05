@@ -1,0 +1,106 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  journeys     LearningJourney[]
+  progress     Progress[]
+  quizResults  QuizResult[]
+  certificates Certificate[]
+
+  @@map("users")
+}
+
+model LearningJourney {
+  id              String    @id @default(uuid())
+  userId          String    @map("user_id")
+  topic           String
+  duration        String
+  experienceLevel String?   @map("experience_level")
+  goals           String[]
+  status          String    @default("in_progress")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  completedAt     DateTime? @map("completed_at")
+
+  user    User              @relation(fields: [userId], references: [id])
+  modules TrainingModule[]
+
+  @@map("learning_journeys")
+}
+
+model TrainingModule {
+  id            String   @id @default(uuid())
+  journeyId     String   @map("journey_id")
+  title         String
+  description   String?
+  totalDuration Int?     @map("total_duration")
+  objectives    String[]
+  content       Json
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  journey      LearningJourney @relation(fields: [journeyId], references: [id])
+  progress     Progress[]
+  quizResults  QuizResult[]
+  certificates Certificate[]
+
+  @@map("training_modules")
+}
+
+model Progress {
+  id                   String   @id @default(uuid())
+  userId               String   @map("user_id")
+  moduleId             String   @map("module_id")
+  submoduleId          String?  @map("submodule_id")
+  status               String   @default("not_started")
+  completionPercentage Int      @default(0) @map("completion_percentage")
+  timeSpent            Int      @default(0) @map("time_spent")
+  lastAccessed         DateTime @default(now()) @map("last_accessed")
+
+  user   User           @relation(fields: [userId], references: [id])
+  module TrainingModule @relation(fields: [moduleId], references: [id])
+
+  @@map("progress")
+}
+
+model QuizResult {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  moduleId    String   @map("module_id")
+  score       Int
+  totalPoints Int      @map("total_points")
+  percentage  Decimal  @db.Decimal(5, 2)
+  passed      Boolean
+  answers     Json
+  completedAt DateTime @default(now()) @map("completed_at")
+
+  user   User           @relation(fields: [userId], references: [id])
+  module TrainingModule @relation(fields: [moduleId], references: [id])
+
+  @@map("quiz_results")
+}
+
+model Certificate {
+  id                String   @id @default(uuid())
+  userId            String   @map("user_id")
+  moduleId          String   @map("module_id")
+  certificateNumber String   @unique @map("certificate_number")
+  awardedBy         String   @default("Train Me Now - AI First Learning Academy") @map("awarded_by")
+  score             Int
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  user   User           @relation(fields: [userId], references: [id])
+  module TrainingModule @relation(fields: [moduleId], references: [id])
+
+  @@map("certificates")
+}
