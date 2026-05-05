@@ -51,19 +51,27 @@ Return JSON: { "title": "string", "questions": [{"id": "string", "type": "multip
     return this.callWithJson(prompt, 0.5, 3000);
   }
 
-  private async callWithJson(prompt: string, temperature: number, maxTokens: number): Promise<any> {
+  private async callWithJson(prompt: string, temperature: number, maxTokens: number, attempt = 0): Promise<any> {
     try {
       const result = await this.model.generateContent({
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         generationConfig: {
           temperature,
-          maxOutputTokens: maxTokens,
+          maxOutputTokens: Math.max(maxTokens, 2048),
           responseMimeType: 'application/json',
         },
       });
       const text = result.response.text();
+      if (!text || text.trim() === '') throw new Error('Empty response from Gemini');
       return this.parseJson(text);
-    } catch (error) {
+    } catch (error: any) {
+      const isRetryable = error?.message?.includes('503') || error?.message?.includes('429') || error?.message?.includes('overloaded');
+      if (isRetryable && attempt < 3) {
+        const delay = (attempt + 1) * 3000;
+        logger.warn(`Gemini retryable error (attempt ${attempt + 1}), retrying in ${delay}ms`);
+        await new Promise(r => setTimeout(r, delay));
+        return this.callWithJson(prompt, temperature, maxTokens, attempt + 1);
+      }
       logger.error('Gemini API error', { error });
       throw error;
     }
