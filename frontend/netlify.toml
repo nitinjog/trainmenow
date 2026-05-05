@@ -4,7 +4,7 @@
   command = "npm run build"
 
 [build.environment]
-  VITE_API_URL = ""
+  VITE_API_URL = "https://trainmenow-api.onrender.com/api/v1"
 
 [[redirects]]
   from = "/*"
