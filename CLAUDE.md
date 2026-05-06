@@ -29,22 +29,7 @@ Train Me Now is an AI-first self-learning platform. Users input a topic + durati
 
 ### Next Session Resume Checklist
 
-**Outstanding item — must do first:**
-Update Render env vars via dashboard (`https://dashboard.render.com/web/srv-d7t0j90sfn5c73ftb4p0`):
-```
-GEMINI_API_KEY = AIzaSyBsPQWIzTAibA8G1qYuYxr8-trHZhI2xiU   ← new key (old one was quota-exhausted)
-GEMINI_MODEL   = gemini-flash-latest                         ← only model with quota on this key
-```
-Code already updated (commit `62e575d` on master uses `gemini-flash-latest` as default fallback).
-After env vars are saved on Render, it will auto-redeploy. Then verify quiz generation works.
-
-**Or via Render API (service ID confirmed above):**
-```bash
-curl -X PUT https://api.render.com/v1/services/srv-d7t0j90sfn5c73ftb4p0/env-vars \
-  -H "Authorization: Bearer <render_api_key>" \
-  -H "Content-Type: application/json" \
-  -d '[{"key":"GEMINI_API_KEY","value":"AIzaSyBsPQWIzTAibA8G1qYuYxr8-trHZhI2xiU"},{"key":"GEMINI_MODEL","value":"gemini-flash-latest"}]'
-```
+All env vars are set on Render. Verify the app works end-to-end (quiz generation especially).
 
 **After quiz is confirmed working:**
 - Revert `errorHandler.ts` to hide raw error messages: change `res.status(500).json({ error: err.message })` back to `res.status(500).json({ error: 'Internal server error' })` for production.
@@ -157,7 +142,7 @@ GET  /health
 DATABASE_URL=postgresql://postgres:postgres@localhost:5432/trainmenow
 REDIS_URL=redis://localhost:6379
 GEMINI_API_KEY=                    # provided by user
-GEMINI_MODEL=gemini-flash-latest   # only model with quota on current key
+GEMINI_MODEL=gemini-2.5-flash      # confirmed working with current key
 SERPAPI_KEY=                       # optional, scraping degrades without it
 PORT=3000
 NODE_ENV=development
@@ -176,5 +161,5 @@ FRONTEND_URL=http://localhost:5173
 - `PLAYWRIGHT_BROWSERS_PATH=0` required on Render (installs into `node_modules/` which persists to runtime)
 - Render free: 512MB RAM, spins down after 15min idle (cold start ~30–60s)
 - Certificate number format: `TMN-${8-char UUID}-${timestamp}`
-- Gemini free tier: `gemini-2.5-flash` = 20 req/day; `gemini-flash-latest` has higher quota — use this
+- Gemini: use `gemini-2.5-flash` — set `GEMINI_API_KEY` and `GEMINI_MODEL` on Render (never commit key values)
 - `prisma db push` not `prisma migrate deploy` (no migration files committed)
