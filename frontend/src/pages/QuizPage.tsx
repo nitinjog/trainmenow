@@ -22,6 +22,7 @@ export default function QuizPage() {
   const [results, setResults] = useState<QuizResult | null>(null);
   const [error, setError] = useState('');
   const [showExplanation, setShowExplanation] = useState(false);
+  const [certificateId, setCertificateId] = useState<string | null>(null);
 
   async function loadQuiz() {
     setPhase('loading');
@@ -46,7 +47,8 @@ export default function QuizPage() {
       setPhase('results');
 
       if (data.passed) {
-        await certificateApi.generate(moduleId!, Math.round(data.percentage));
+        const { data: cert } = await certificateApi.generate(moduleId!, Math.round(data.percentage));
+        setCertificateId(cert.id || cert.certificateId);
       }
     } catch {
       setError('Failed to submit quiz.');
@@ -106,8 +108,8 @@ export default function QuizPage() {
               </div>
 
               <div className="space-y-3">
-                {results.passed && (
-                  <Button className="w-full" onClick={() => navigate(`/certificate/${moduleId}`)}>
+                {results.passed && certificateId && (
+                  <Button className="w-full" onClick={() => navigate(`/certificate/${certificateId}`)}>
                     View Certificate
                   </Button>
                 )}
