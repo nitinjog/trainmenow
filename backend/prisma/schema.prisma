@@ -18,6 +18,7 @@ model User {
   progress     Progress[]
   quizResults  QuizResult[]
   certificates Certificate[]
+  storedQuizzes StoredQuiz[]
 
   @@map("users")
 }
@@ -49,10 +50,11 @@ model TrainingModule {
   content       Json
   createdAt     DateTime @default(now()) @map("created_at")
 
-  journey      LearningJourney @relation(fields: [journeyId], references: [id])
-  progress     Progress[]
-  quizResults  QuizResult[]
-  certificates Certificate[]
+  journey       LearningJourney @relation(fields: [journeyId], references: [id])
+  progress      Progress[]
+  quizResults   QuizResult[]
+  certificates  Certificate[]
+  storedQuizzes StoredQuiz[]
 
   @@map("training_modules")
 }
@@ -88,6 +90,20 @@ model QuizResult {
   module TrainingModule @relation(fields: [moduleId], references: [id])
 
   @@map("quiz_results")
+}
+
+model StoredQuiz {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  moduleId  String   @map("module_id")
+  quizData  Json     @map("quiz_data")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user   User           @relation(fields: [userId], references: [id])
+  module TrainingModule @relation(fields: [moduleId], references: [id])
+
+  @@unique([userId, moduleId])
+  @@map("stored_quizzes")
 }
 
 model Certificate {
