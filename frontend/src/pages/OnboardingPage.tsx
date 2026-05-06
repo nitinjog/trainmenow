@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { FollowUpQuestion } from '@/types';
 
-const DURATIONS = ['1 hour', '1 day', '3 days', '1 week', '2 weeks', '1 month'];
+const DURATIONS = ['1 hour', '2 hours', '3 hours', '4 hours', '6 hours', '8 hours', '15 hours', '20 hours', '30 hours'];
 const LEVELS = [
   { value: 'beginner', label: 'Beginner', desc: "I'm new to this" },
   { value: 'intermediate', label: 'Intermediate', desc: 'I know the basics' },

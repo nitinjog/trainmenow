@@ -20,16 +20,18 @@ export default function LearnPage() {
   const [activeSubmodule, setActiveSubmodule] = useState<SubModule | null>(null);
   const [note, setNote] = useState('');
 
-  const { data: modules, isLoading } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ['modules', moduleId],
-    queryFn: () => curriculumApi.getModules(moduleId!).then(r => r.data as TrainingModule[]),
+    queryFn: () => curriculumApi.getModules(moduleId!).then(r => r.data as { status: string; modules: TrainingModule[] }),
     refetchInterval: (query) => {
-      const d = query.state.data as TrainingModule[] | undefined;
-      return !d || d.length === 0 ? 5000 : false;
+      const d = query.state.data as { status: string; modules: TrainingModule[] } | undefined;
+      if (!d || (d.modules.length === 0 && d.status !== 'failed')) return 5000;
+      return false;
     },
   });
 
-  const module = modules?.[0];
+  const journeyStatus = data?.status;
+  const module = data?.modules?.[0];
   const submodules: SubModule[] = module?.content?.modules || [];
   const overallProgress = submodules.length > 0
     ? submodules.reduce((sum, sm) => sum + (progress[`${module?.id}-${sm.id}`] || 0), 0) / submodules.length
@@ -60,6 +62,23 @@ export default function LearnPage() {
         <div className="text-center">
           <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto mb-4" />
           <p className="text-muted-foreground">Loading your course…</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (journeyStatus === 'failed') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center max-w-md px-4">
+          <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
+            <span className="text-red-500 text-2xl">✕</span>
+          </div>
+          <h2 className="text-xl font-semibold mb-2">Curriculum generation failed</h2>
+          <p className="text-muted-foreground text-sm mb-6">
+            Something went wrong while preparing your content. This is usually a temporary issue.
+          </p>
+          <Button onClick={() => navigate('/')}>Start a new course</Button>
         </div>
       </div>
     );

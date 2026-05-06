@@ -58,10 +58,11 @@ router.post('/follow-up', async (req: AuthRequest, res, next) => {
 // GET /api/v1/curriculum/:id/modules
 router.get('/:id/modules', async (req: AuthRequest, res, next) => {
   try {
-    const modules = await prisma.trainingModule.findMany({
-      where: { journey: { id: req.params.id, userId: req.userId! } },
+    const journey = await prisma.learningJourney.findFirstOrThrow({
+      where: { id: req.params.id, userId: req.userId! },
+      include: { modules: true },
     });
-    res.json(modules);
+    res.json({ status: journey.status, modules: journey.modules });
   } catch (err) { next(err); }
 });
 
