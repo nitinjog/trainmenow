@@ -6,13 +6,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Train Me Now is an AI-first self-learning platform. Users input a topic + duration, Gemini Flash designs a personalized curriculum, Playwright scrapes web content, and the LLM organizes it into modules with quizzes and client-side PDF certificate generation.
 
-## Deployment Status (as of 2026-05-05) — ALL LIVE
+## Deployment Status — ALL LIVE (as of 2026-05-06)
 
 | Layer | Service | Status |
 |---|---|---|
-| Frontend | Netlify — `trainmenow-app-616.netlify.app` | **LIVE** |
+| Frontend | Netlify — `trainmenow-app-616.netlify.app` | **LIVE** — auto-deploys via GitHub Actions |
 | Backend API | Render — `trainmenow-api.onrender.com` | **LIVE** |
-| PostgreSQL | Neon (free serverless) | **LIVE** — tables created via `prisma db push` |
+| PostgreSQL | Neon (free serverless) | **LIVE** — tables via `prisma db push` |
 | Redis + BullMQ | Upstash (free tier) | **LIVE** |
 
 ### Service Registry
@@ -27,34 +27,60 @@ Train Me Now is an AI-first self-learning platform. Users input a topic + durati
 | Neon DB | `ep-royal-lake-ap8nnvre.c-7.us-east-1.aws.neon.tech`, DB: `neondb` |
 | Upstash Redis | `neat-mallard-115620.upstash.io:6379` (use `rediss://` TLS prefix) |
 
-### Next Session Resume Checklist
+### ⚠️ FIRST ACTION NEXT SESSION
 
-All env vars are set on Render. Verify the app works end-to-end (quiz generation especially).
+Update `GEMINI_MODEL` on Render to `gemini-flash-latest`:
 
-**After quiz is confirmed working:**
-- Revert `errorHandler.ts` to hide raw error messages: change `res.status(500).json({ error: err.message })` back to `res.status(500).json({ error: 'Internal server error' })` for production.
+**Via Render dashboard** (`https://dashboard.render.com/web/srv-d7t0j90sfn5c73ftb4p0` → Environment):
+```
+GEMINI_MODEL = gemini-flash-latest
+```
 
-### Bug Fixes Applied During Deployment Session
+**Or via Render API** (GET existing vars first, then PUT all of them with updated value — never PUT only one var or it wipes the rest):
+```bash
+# 1. GET current vars, 2. update GEMINI_MODEL, 3. PUT all vars back
+```
 
-These are already in `master` — do NOT re-apply:
+**Why:** `gemini-2.5-flash` has a 20 req/day free tier limit — exhausted during testing on 2026-05-06. `gemini-flash-latest` was confirmed working (HTTP 200) while all other models returned 429.
 
-1. **`backend/package.json`** — `@types/express` downgraded `^5.0.0` → `^4.17.21` (v5 broke `req.params` types)
-2. **`backend/tsconfig.json`** — added `"types": ["node"]` and `"DOM"` to lib (needed after express v4 type change)
-3. **`backend/src/routes/quiz.ts`** — Zod schema `type: z.string()` → `z.enum([...])` to match `QuestionData`
-4. **`backend/src/middleware/errorHandler.ts`** — added `ZodError` → 400; exposed `err.message` for debugging (revert for prod)
-5. **`backend/src/app.ts`** — rate limit raised `max: 10` → `max: 200` (10/min exhausted by polling every 5s)
-6. **`backend/src/services/geminiService.ts`** — retry logic (3x, 3/6/9s backoff); `maxOutputTokens` floor 2048; default model `gemini-flash-latest`
-7. **`frontend/netlify.toml`** — `VITE_API_URL` was `""` (overrode everything); fixed to actual Render URL
-8. **`frontend/.env.production`** — created with `VITE_API_URL=https://trainmenow-api.onrender.com/api/v1`
-9. **`frontend/src/pages/QuizPage.tsx`** — `useState(() => loadQuiz())` anti-pattern → `useEffect(() => { loadQuiz(); }, [])`
+**After updating:** trigger a Render redeploy so the new env var takes effect.
+
+### Pending Polish Items
+
+- Revert `errorHandler.ts` to hide raw error messages in production: `res.status(500).json({ error: 'Internal server error' })` instead of `err.message`
+
+### Features Shipped (2026-05-06 session)
+
+- **Quiz storage**: `StoredQuiz` table (userId + moduleId unique). Pass → reuse same quiz on retake. Fail → delete stored quiz, force fresh generation next time.
+- **Certificate navigation fix**: QuizPage now navigates to `/certificate/{cert.id}` (was using moduleId by mistake).
+- **Curriculum failed state**: `buildCurriculum` catches errors and sets journey status to `failed`. `GET /curriculum/:id/modules` returns `{ status, modules }`. LearnPage shows error screen + "Start a new course" button instead of infinite spinner.
+- **Duration picker**: hours only — 1h, 2h, 3h, 4h, 6h, 8h, 15h, 20h, 30h (3×3 grid).
+- **GitHub Actions**: `.github/workflows/deploy-frontend.yml` auto-builds and deploys frontend to Netlify on every push that touches `frontend/**`. Secrets stored in GitHub (`NETLIFY_AUTH_TOKEN`, `NETLIFY_SITE_ID`).
+
+### Bug Fixes Already in master — Do NOT Re-Apply
+
+1. **`backend/package.json`** — `@types/express` downgraded to `^4.17.21`
+2. **`backend/tsconfig.json`** — added `"types": ["node"]`, `"lib": ["ES2020", "DOM"]`
+3. **`backend/src/routes/quiz.ts`** — Zod `type` field uses `z.enum([...])`
+4. **`backend/src/middleware/errorHandler.ts`** — `ZodError` → 400; exposes `err.message` (revert for prod)
+5. **`backend/src/app.ts`** — rate limit raised to `max: 200`
+6. **`backend/src/services/geminiService.ts`** — retry logic; `maxOutputTokens` floor 2048; default model `gemini-flash-latest`
+7. **`frontend/netlify.toml`** — `VITE_API_URL` set to correct Render URL
+8. **`frontend/.env.production`** — created with correct `VITE_API_URL`
+9. **`frontend/src/pages/QuizPage.tsx`** — `useState(() => loadQuiz())` → `useEffect(() => { loadQuiz(); }, [])`
 
 ### Prisma Note
 
-**Use `prisma db push` not `prisma migrate deploy`** — no migration files were ever committed. The Render build command should use `prisma db push`:
+**Use `prisma db push` not `prisma migrate deploy`** — no migration files were ever committed. Render build command:
 ```
 npm install --include=dev && PLAYWRIGHT_BROWSERS_PATH=0 npx playwright install chromium && npm run build && npx prisma generate && npx prisma db push
 ```
-`PLAYWRIGHT_BROWSERS_PATH=0` installs Playwright into `node_modules/` so it persists from build container to runtime container on Render.
+
+### Deployment Notes
+
+- **Frontend deploys**: GitHub Actions handles it automatically on push. No manual `netlify deploy` needed anymore.
+- **Backend deploys**: Render does NOT auto-deploy from GitHub (webhook not connected). Must manually trigger via Render dashboard or API after each push.
+- **Render API PUT env-vars**: Always GET existing vars first and PUT all of them. PUT is a full replacement — a partial PUT wipes unlisted vars.
 
 ## Commands
 
@@ -78,6 +104,8 @@ npm run build
 
 ```
 trainmenow/
+├── .github/workflows/
+│   └── deploy-frontend.yml  # Auto-deploy frontend to Netlify on push
 ├── netlify.toml             # Netlify build config (base=frontend, publish=dist)
 ├── docker-compose.yml       # Local postgres + redis
 ├── .env.example
@@ -101,7 +129,7 @@ trainmenow/
             ├── geminiService.ts      # 4 LLM prompt types, JSON output enforced
             ├── scraperEngine.ts      # Playwright + Cheerio, batch=3, --no-sandbox
             ├── contentProcessor.ts   # sanitize + chunk scraped content
-            ├── curriculumBuilder.ts  # LLM → scrape → LLM pipeline
+            ├── curriculumBuilder.ts  # LLM → scrape → LLM pipeline, sets status=failed on error
             ├── quizGenerator.ts      # generate + grade (70% pass threshold)
             ├── certificateService.ts # creates DB record, TMN-XXXX-timestamp format
             └── queueService.ts       # BullMQ worker on Upstash Redis
@@ -109,11 +137,13 @@ trainmenow/
 
 ## Architecture Notes
 
-**LLM-First**: All intelligence via `geminiService.ts` — all 4 prompt types (follow-up questions, scraping plan, content organization, quiz) use `responseMimeType: "application/json"`.
+**LLM-First**: All intelligence via `geminiService.ts` — all 4 prompt types use `responseMimeType: "application/json"`.
 
-**Async scraping**: BullMQ job queued on `POST /curriculum/follow-up`. Frontend polls `GET /api/v1/scrape/:jobId/status`. `LearnPage` auto-refetches every 5s via React Query `refetchInterval`.
+**Async scraping**: BullMQ job queued on `POST /curriculum/follow-up`. LearnPage polls `GET /curriculum/:id/modules` (returns `{ status, modules }`) every 5s until modules appear or status is `failed`.
 
-**PDF certificates**: Generated client-side in `CertificatePage.tsx` using `@react-pdf/renderer` — no Puppeteer on backend.
+**Quiz storage**: `StoredQuiz` table persists generated quiz per user+module. Reused on retake after pass; deleted on fail to force fresh generation.
+
+**PDF certificates**: Generated client-side in `CertificatePage.tsx` using `@react-pdf/renderer`.
 
 **Auth**: JWT stored in localStorage, attached via Axios interceptor. Token cleared on 401.
 
@@ -139,17 +169,17 @@ GET  /health
 
 ```bash
 # backend/.env (git-ignored)
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/trainmenow
-REDIS_URL=redis://localhost:6379
-GEMINI_API_KEY=                    # provided by user
-GEMINI_MODEL=gemini-2.5-flash      # confirmed working with current key
-SERPAPI_KEY=                       # optional, scraping degrades without it
+DATABASE_URL=postgresql://...   # Neon connection string
+REDIS_URL=rediss://...          # Upstash Redis (TLS — rediss://)
+GEMINI_API_KEY=                 # never commit; set on Render dashboard
+GEMINI_MODEL=gemini-flash-latest  # use this — 2.5-flash exhausts 20 req/day limit
+SERPAPI_KEY=                    # optional
 PORT=3000
 NODE_ENV=development
 JWT_SECRET=change-me
 FRONTEND_URL=http://localhost:5173
 
-# frontend: VITE_API_URL set in frontend/netlify.toml and frontend/.env.production
+# frontend: VITE_API_URL in frontend/netlify.toml and frontend/.env.production
 # In dev, Vite proxy handles /api → localhost:3000
 ```
 
@@ -158,8 +188,9 @@ FRONTEND_URL=http://localhost:5173
 - Quiz pass threshold: 70%
 - Scraping: max 3 parallel, 1s delay between batches, max 15 URLs, 10k chars/page
 - Playwright on Render: `--no-sandbox --disable-dev-shm-usage --disable-gpu`
-- `PLAYWRIGHT_BROWSERS_PATH=0` required on Render (installs into `node_modules/` which persists to runtime)
+- `PLAYWRIGHT_BROWSERS_PATH=0` required on Render
 - Render free: 512MB RAM, spins down after 15min idle (cold start ~30–60s)
 - Certificate number format: `TMN-${8-char UUID}-${timestamp}`
-- Gemini: use `gemini-2.5-flash` — set `GEMINI_API_KEY` and `GEMINI_MODEL` on Render (never commit key values)
+- Gemini free tier: `gemini-flash-latest` has highest quota; `gemini-2.5-flash` = 20 req/day
 - `prisma db push` not `prisma migrate deploy` (no migration files committed)
+- Never put API keys or secrets in CLAUDE.md, memory files, or any tracked file
