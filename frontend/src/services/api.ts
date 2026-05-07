@@ -45,6 +45,7 @@ export const curriculumApi = {
   updateProgress: (journeyId: string, data: { moduleId: string; submoduleId?: string; completionPercentage: number; timeSpent: number }) =>
     api.post(`/curriculum/${journeyId}/progress`, data),
   list: () => api.get('/curriculum'),
+  delete: (journeyId: string) => api.delete(`/curriculum/${journeyId}`),
 };
 
 // Scraping

@@ -98,6 +98,30 @@ router.post('/:id/progress', async (req: AuthRequest, res, next) => {
   } catch (err) { next(err); }
 });
 
+// DELETE /api/v1/curriculum/:id
+router.delete('/:id', async (req: AuthRequest, res, next) => {
+  try {
+    const journey = await prisma.learningJourney.findFirst({
+      where: { id: req.params.id, userId: req.userId! },
+      include: { modules: { select: { id: true } } },
+    });
+    if (!journey) return res.status(404).json({ error: 'Journey not found' });
+
+    const moduleIds = journey.modules.map(m => m.id);
+
+    await prisma.$transaction([
+      prisma.progress.deleteMany({ where: { moduleId: { in: moduleIds } } }),
+      prisma.storedQuiz.deleteMany({ where: { moduleId: { in: moduleIds } } }),
+      prisma.quizResult.deleteMany({ where: { moduleId: { in: moduleIds } } }),
+      prisma.certificate.deleteMany({ where: { moduleId: { in: moduleIds } } }),
+      prisma.trainingModule.deleteMany({ where: { id: { in: moduleIds } } }),
+      prisma.learningJourney.delete({ where: { id: req.params.id } }),
+    ]);
+
+    res.json({ success: true });
+  } catch (err) { next(err); }
+});
+
 // GET /api/v1/curriculum (list all journeys for user)
 router.get('/', async (req: AuthRequest, res, next) => {
   try {
