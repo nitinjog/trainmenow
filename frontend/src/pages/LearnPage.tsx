@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { BookOpen, ChevronRight, Clock, ExternalLink, Loader2, PenLine } from 'lucide-react';
+import { BookOpen, ChevronRight, Clock, ExternalLink, Loader2, PenLine, PlayCircle, FileText, BookMarked } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { curriculumApi } from '@/services/api';
 import { useLearningStore } from '@/stores/learningStore';
@@ -241,18 +241,53 @@ export default function LearnPage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <ul className="space-y-2">
-                      {activeSubmodule.resources.map((r, i) => (
-                        <li key={i}>
-                          <a href={r.url} target="_blank" rel="noopener noreferrer"
-                            className="text-sm text-primary hover:underline flex items-center gap-1">
-                            <ExternalLink className="h-3 w-3" />
-                            {r.title}
-                            <span className="text-muted-foreground text-xs">({r.source})</span>
+                    <div className="space-y-3">
+                      {activeSubmodule.resources.map((r, i) => {
+                        const isYouTube = r.url.includes('youtube.com') || r.url.includes('youtu.be');
+                        const videoId = isYouTube ? new URL(r.url).searchParams.get('v') : null;
+                        const thumbnail = videoId ? `https://img.youtube.com/vi/${videoId}/mqdefault.jpg` : null;
+                        const isVideo = r.type === 'video';
+                        const isRef = r.type === 'reference';
+                        const Icon = isVideo ? PlayCircle : isRef ? BookMarked : FileText;
+                        const badgeColor = isVideo
+                          ? 'bg-red-50 text-red-700 border-red-200'
+                          : isRef
+                          ? 'bg-blue-50 text-blue-700 border-blue-200'
+                          : 'bg-gray-50 text-gray-700 border-gray-200';
+                        return (
+                          <a
+                            key={i}
+                            href={r.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex gap-3 rounded-lg border p-3 hover:bg-gray-50 transition-colors group"
+                          >
+                            {thumbnail ? (
+                              <img
+                                src={thumbnail}
+                                alt=""
+                                className="w-24 h-14 object-cover rounded shrink-0"
+                              />
+                            ) : (
+                              <div className={`w-10 h-10 rounded flex items-center justify-center shrink-0 border ${badgeColor}`}>
+                                <Icon className="h-5 w-5" />
+                              </div>
+                            )}
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium group-hover:text-primary line-clamp-2 leading-snug">
+                                {r.title}
+                              </p>
+                              <div className="flex items-center gap-2 mt-1">
+                                <span className={`text-xs px-1.5 py-0.5 rounded border font-medium ${badgeColor}`}>
+                                  {r.type}
+                                </span>
+                                <span className="text-xs text-muted-foreground truncate">{r.source}</span>
+                              </div>
+                            </div>
                           </a>
-                        </li>
-                      ))}
-                    </ul>
+                        );
+                      })}
+                    </div>
                   </CardContent>
                 </Card>
               )}

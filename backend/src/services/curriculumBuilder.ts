@@ -1,7 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import geminiService from './geminiService';
 import scraperEngine from './scraperEngine';
-import { processContent } from './contentProcessor';
 import logger from '../utils/logger';
 
 const prisma = new PrismaClient();
@@ -18,11 +17,10 @@ export async function buildCurriculum(
     const plan = await geminiService.designScrapingPlan(topic, duration, userProfile);
     logger.info('Scraping plan designed', { queries: plan.searchQueries.length });
 
-    const scraped = await scraperEngine.executePlan(plan);
-    logger.info('Content scraped', { count: scraped.length });
+    const { textContent, resources } = await scraperEngine.executePlan(plan);
+    logger.info('Discovery complete', { textItems: textContent.length, resources: resources.length });
 
-    const processedContent = processContent(scraped);
-    const organized = await geminiService.organizeContent(processedContent, topic, duration);
+    const organized = await geminiService.organizeContent(textContent, resources, topic, duration);
 
     const module = await prisma.trainingModule.create({
       data: {

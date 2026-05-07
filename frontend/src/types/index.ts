@@ -31,7 +31,7 @@ export interface SubModule {
 export interface Resource {
   title: string;
   url: string;
-  type: 'article' | 'video' | 'course' | 'paper' | 'documentation';
+  type: 'article' | 'video' | 'course' | 'paper' | 'documentation' | 'reference';
   source: string;
 }
 
