@@ -17,7 +17,7 @@ export async function buildCurriculum(
     const plan = await geminiService.designScrapingPlan(topic, duration, userProfile);
     logger.info('Scraping plan designed', { queries: plan.searchQueries.length });
 
-    const { textContent, resources } = await scraperEngine.executePlan(plan);
+    const { textContent, resources } = await scraperEngine.executePlan(plan, duration);
     logger.info('Discovery complete', { textItems: textContent.length, resources: resources.length });
 
     const organized = await geminiService.organizeContent(textContent, resources, topic, duration);

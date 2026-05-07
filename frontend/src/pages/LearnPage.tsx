@@ -263,11 +263,18 @@ export default function LearnPage() {
                             className="flex gap-3 rounded-lg border p-3 hover:bg-gray-50 transition-colors group"
                           >
                             {thumbnail ? (
-                              <img
-                                src={thumbnail}
-                                alt=""
-                                className="w-24 h-14 object-cover rounded shrink-0"
-                              />
+                              <div className="relative shrink-0">
+                                <img
+                                  src={thumbnail}
+                                  alt=""
+                                  className="w-24 h-14 object-cover rounded"
+                                />
+                                {r.duration && (
+                                  <span className="absolute bottom-1 right-1 bg-black/80 text-white text-xs px-1 py-0.5 rounded font-mono leading-none">
+                                    {r.duration}
+                                  </span>
+                                )}
+                              </div>
                             ) : (
                               <div className={`w-10 h-10 rounded flex items-center justify-center shrink-0 border ${badgeColor}`}>
                                 <Icon className="h-5 w-5" />

@@ -33,6 +33,7 @@ export interface Resource {
   url: string;
   type: 'article' | 'video' | 'course' | 'paper' | 'documentation' | 'reference';
   source: string;
+  duration?: string; // video duration: "12:34" or "1:05:22"
 }
 
 export interface TrainingModule {

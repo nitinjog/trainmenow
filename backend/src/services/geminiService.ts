@@ -34,26 +34,28 @@ Return JSON: { "searchQueries": ["string"], "targetDomains": ["string"], "conten
   async organizeContent(textContent: string[], resources: ContentResource[], topic: string, duration: string): Promise<OrganizedModule> {
     const truncated = textContent.map(c => c.substring(0, 2000)).join('\n\n---\n\n');
 
-    const resourceList = resources.slice(0, 40).map((r, i) =>
-      `[${i}] ${r.type.toUpperCase()} | "${r.title}" | source: ${r.source} | url: ${r.url}`
-    ).join('\n');
+    const resourceList = resources.slice(0, 40).map((r, i) => {
+      const dur = r.videoDuration ? ` | ${r.videoDuration}` : '';
+      return `[${i}] ${r.type.toUpperCase()}${dur} | "${r.title}" | source: ${r.source} | url: ${r.url}`;
+    }).join('\n');
 
     const prompt = `Design a structured training curriculum for "${topic}" targeting ${duration} of total study time.
 
 Reference material (scraped content for context):
 ${truncated || '(No scraped text — use your knowledge to write module content.)'}
 
-Verified resources available — you MUST only use URLs from this exact list. Do NOT invent, guess, or modify any URL:
-${resourceList || '(No external resources available — omit the resources array or use empty arrays.)'}
+Verified resources — ONLY use URLs from this exact list. Do NOT invent, guess, or modify any URL:
+${resourceList || '(No external resources available — use empty resource arrays.)'}
 
 Instructions:
 - Create 4–8 progressive modules covering the topic end-to-end
-- For each module assign 2–4 resources from the list above that best match that module's focus; copy the url, title, type, and source fields exactly
-- Spread VIDEO resources across multiple modules — do not cluster them all in one module
+- For each module assign 2–4 resources from the list above that best match that module's specific focus
+- Spread VIDEO resources across different modules; do not cluster them all in one module
+- For video resources, copy the duration value (e.g. "12:34") exactly from the list into the resource's "duration" field; for non-video resources set "duration" to ""
 - Write each module's "content" field as clear instructional markdown (250–400 words): explain concepts, give examples, highlight key points
-- Do NOT embed URLs or links inside the "content" text — URLs belong only in the resources array
+- Do NOT embed URLs inside the "content" text — URLs belong only in the resources array
 
-Return JSON: { "title": "string", "description": "string", "objectives": ["string"], "totalHours": number, "modules": [{"id": "string", "title": "string", "description": "string", "duration": number, "content": "string", "resources": [{"title": "string", "url": "string", "type": "string", "source": "string"}], "exercises": ["string"], "order": number}] }`;
+Return JSON: { "title": "string", "description": "string", "objectives": ["string"], "totalHours": number, "modules": [{"id": "string", "title": "string", "description": "string", "duration": number, "content": "string", "resources": [{"title": "string", "url": "string", "type": "string", "source": "string", "duration": "string"}], "exercises": ["string"], "order": number}] }`;
 
     return this.callWithJson(prompt, 0.4, 4000);
   }
@@ -160,6 +162,7 @@ export interface ContentResource {
   type: 'video' | 'article' | 'reference' | 'course';
   source: string;
   thumbnail?: string;
+  videoDuration?: string; // formatted: "12:34" or "1:05:22"
 }
 
 export interface OrganizedModule {
