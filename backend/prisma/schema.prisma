@@ -31,6 +31,7 @@ model LearningJourney {
   experienceLevel String?   @map("experience_level")
   goals           String[]
   status          String    @default("in_progress")
+  failureReason   String?   @map("failure_reason")
   createdAt       DateTime  @default(now()) @map("created_at")
   completedAt     DateTime? @map("completed_at")
 

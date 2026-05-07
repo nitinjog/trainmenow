@@ -20,11 +20,13 @@ export default function LearnPage() {
   const [activeSubmodule, setActiveSubmodule] = useState<SubModule | null>(null);
   const [note, setNote] = useState('');
 
+  type ModulesResponse = { status: string; modules: TrainingModule[]; failureReason?: string };
+
   const { data, isLoading } = useQuery({
     queryKey: ['modules', moduleId],
-    queryFn: () => curriculumApi.getModules(moduleId!).then(r => r.data as { status: string; modules: TrainingModule[] }),
+    queryFn: () => curriculumApi.getModules(moduleId!).then(r => r.data as ModulesResponse),
     refetchInterval: (query) => {
-      const d = query.state.data as { status: string; modules: TrainingModule[] } | undefined;
+      const d = query.state.data as ModulesResponse | undefined;
       if (!d || (d.modules.length === 0 && d.status !== 'failed')) return 5000;
       return false;
     },
@@ -68,6 +70,8 @@ export default function LearnPage() {
   }
 
   if (journeyStatus === 'failed') {
+    const reason = data?.failureReason;
+    const isQuota = reason?.includes('429') || reason?.toLowerCase().includes('quota') || reason?.toLowerCase().includes('rate');
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center max-w-md px-4">
@@ -76,8 +80,15 @@ export default function LearnPage() {
           </div>
           <h2 className="text-xl font-semibold mb-2">Curriculum generation failed</h2>
           <p className="text-muted-foreground text-sm mb-6">
-            Something went wrong while preparing your content. This is usually a temporary issue.
+            {isQuota
+              ? 'The AI service is temporarily rate-limited. Please wait a few minutes and try again.'
+              : 'Something went wrong while preparing your content. This is usually a temporary issue.'}
           </p>
+          {reason && !isQuota && (
+            <p className="text-xs text-muted-foreground bg-gray-100 rounded p-2 mb-4 text-left font-mono break-all">
+              {reason}
+            </p>
+          )}
           <Button onClick={() => navigate('/')}>Start a new course</Button>
         </div>
       </div>

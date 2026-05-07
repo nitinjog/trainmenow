@@ -57,7 +57,7 @@ Instructions:
 
 Return JSON: { "title": "string", "description": "string", "objectives": ["string"], "totalHours": number, "modules": [{"id": "string", "title": "string", "description": "string", "duration": number, "content": "string", "resources": [{"title": "string", "url": "string", "type": "string", "source": "string", "duration": "string"}], "exercises": ["string"], "order": number}] }`;
 
-    return this.callWithJson(prompt, 0.4, 4000);
+    return this.callWithJson(prompt, 0.4, 8192);
   }
 
   async generateQuiz(moduleContent: string, questionCount = 10): Promise<QuizData> {

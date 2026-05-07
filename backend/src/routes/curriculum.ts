@@ -62,7 +62,7 @@ router.get('/:id/modules', async (req: AuthRequest, res, next) => {
       where: { id: req.params.id, userId: req.userId! },
       include: { modules: true },
     });
-    res.json({ status: journey.status, modules: journey.modules });
+    res.json({ status: journey.status, modules: journey.modules, failureReason: journey.failureReason });
   } catch (err) { next(err); }
 });
 

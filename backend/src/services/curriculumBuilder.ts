@@ -42,9 +42,10 @@ export async function buildCurriculum(
     return module.id;
   } catch (err) {
     logger.error('Curriculum build failed', { journeyId, err });
+    const reason = err instanceof Error ? err.message : String(err);
     await prisma.learningJourney.update({
       where: { id: journeyId },
-      data: { status: 'failed' },
+      data: { status: 'failed', failureReason: reason.substring(0, 500) },
     }).catch(() => {});
     throw err;
   }
