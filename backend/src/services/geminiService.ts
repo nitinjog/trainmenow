@@ -11,7 +11,7 @@ class GeminiService {
   constructor() {
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
     this.model = genAI.getGenerativeModel({
-      model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+      model: process.env.GEMINI_MODEL || 'gemini-flash-latest',
       systemInstruction: SYSTEM_PROMPT,
     });
   }
@@ -65,16 +65,56 @@ Return JSON: { "title": "string", "questions": [{"id": "string", "type": "multip
       if (!text || text.trim() === '') throw new Error('Empty response from Gemini');
       return this.parseJson(text);
     } catch (error: any) {
-      const isRetryable = error?.message?.includes('503') || error?.message?.includes('429') || error?.message?.includes('overloaded');
-      if (isRetryable && attempt < 3) {
+      const is429 = error?.message?.includes('429') || error?.status === 429;
+      const isOverloaded = error?.message?.includes('503') || error?.message?.includes('overloaded');
+
+      if (isOverloaded && attempt < 3) {
         const delay = (attempt + 1) * 3000;
-        logger.warn(`Gemini retryable error (attempt ${attempt + 1}), retrying in ${delay}ms`);
+        logger.warn(`Gemini overloaded (attempt ${attempt + 1}), retrying in ${delay}ms`);
         await new Promise(r => setTimeout(r, delay));
         return this.callWithJson(prompt, temperature, maxTokens, attempt + 1);
       }
+
+      if (is429 && process.env.OPENROUTER_API_KEY) {
+        logger.warn('Gemini rate-limited (429), falling back to OpenRouter');
+        return this.callOpenRouter(prompt, temperature, maxTokens);
+      }
+
       logger.error('Gemini API error', { error });
       throw error;
     }
+  }
+
+  private async callOpenRouter(prompt: string, temperature: number, maxTokens: number): Promise<any> {
+    const model = process.env.OPENROUTER_MODEL || 'google/gemini-2.0-flash-001';
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'user', content: prompt },
+        ],
+        response_format: { type: 'json_object' },
+        temperature,
+        max_tokens: Math.max(maxTokens, 2048),
+      }),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`OpenRouter error ${response.status}: ${errText}`);
+    }
+
+    const data = await response.json() as any;
+    const text = data.choices?.[0]?.message?.content;
+    if (!text) throw new Error('Empty response from OpenRouter');
+    logger.info('OpenRouter fallback succeeded', { model });
+    return this.parseJson(text);
   }
 
   private parseJson(text: string): any {
