@@ -3,19 +3,27 @@ services:
     name: trainmenow-api
     env: node
     plan: free
-    buildCommand: npm install && npx playwright install chromium --with-deps && npm run build && npx prisma generate
+    buildCommand: npm install --include=dev && PLAYWRIGHT_BROWSERS_PATH=0 npx playwright install chromium && npm run build && npx prisma generate && npx prisma db push
     startCommand: npm start
     envVars:
       - key: NODE_ENV
         value: production
+      - key: PLAYWRIGHT_BROWSERS_PATH
+        value: "0"
+      - key: GEMINI_MODEL
+        value: gemini-flash-latest
       - key: DATABASE_URL
         sync: false
       - key: REDIS_URL
         sync: false
       - key: GEMINI_API_KEY
         sync: false
-      - key: GEMINI_MODEL
-        value: gemini-2.5-flash-preview-04-17
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: OPENROUTER_MODEL
+        value: google/gemini-2.0-flash-001
+      - key: YOUTUBE_API_KEY
+        sync: false
       - key: SERPAPI_KEY
         sync: false
       - key: JWT_SECRET
